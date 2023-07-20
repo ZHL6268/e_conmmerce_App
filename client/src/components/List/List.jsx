@@ -11,8 +11,6 @@ const List = ({selectedSubCats, maxPrice, sort, catId}) => {
     &filters[price][$lte]=${maxPrice}
     &sort=price:${sort}
     `)
-
-    console.log(data)
     
     return(
         <div className="list">

@@ -1,52 +1,63 @@
 import React from "react"
 import "./Cart.scss"
 import DeleteIcon from '@mui/icons-material/Delete';
+import {useSelector} from "react-redux"
+import { removeItem, resetCart } from "../../redux/cartReducer";
+import { useDispatch } from "react-redux";
+import {loadStripe} from '@stripe/stripe-js';
+import { makeRequest } from "../../makeRequest";
 
 const Cart= () =>{
-    const data =[
-        {
-            id: 1,
-            img: "https://static.wixstatic.com/media/81c1ae_5fd532ab823746198b7f28dff37cd470~mv2.jpg/v1/fill/w_619,h_1102,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/81c1ae_5fd532ab823746198b7f28dff37cd470~mv2.jpg",
-            img2: "https://static.wixstatic.com/media/81c1ae_74498b5d957e48a8904fc4994f0e45f7~mv2.jpg/v1/fill/w_619,h_1102,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/81c1ae_74498b5d957e48a8904fc4994f0e45f7~mv2.jpg",
-            title: "SKIRT",
-            isNew: true,
-            oldPrice: 19,
-            price: 12,
-            desc: "Full cashmere jumper, a 100% cashmere fabric with a rare annual production, softer, lighter and warmer, with a flattering fit and a simple style in a popular brown colour, a versatile underwear piece.",
-        },
-        {
-            id: 2,
-            img: "https://static.wixstatic.com/media/81c1ae_01110a10f24e4cff8b30932e86c73b42~mv2.jpg/v1/fill/w_619,h_1102,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/81c1ae_01110a10f24e4cff8b30932e86c73b42~mv2.jpg",
-            img2: "https://static.wixstatic.com/media/81c1ae_ad846866e8f640f9b7c2c80eae511218~mv2.jpg/v1/fill/w_619,h_1102,al_c,q_85,usm_0.66_1.00_0.01,enc_auto/81c1ae_ad846866e8f640f9b7c2c80eae511218~mv2.jpg",
-            title: "COAT",
-            isNew: false,
-            oldPrice: 19,
-            price: 12,
-            desc: "Full cashmere jumper, a 100% cashmere fabric with a rare annual production, softer, lighter and warmer, with a flattering fit and a simple style in a popular brown colour, a versatile underwear piece.",
-        },
-    ];
+    const products = useSelector(state => state.cart.products)
+    const totalPrice = ()=>{
+        let totalPrice = 0;
+        products.forEach(item => {
+            totalPrice += item.quantity*item.price
+        });
+        return totalPrice.toFixed(2)
+    }
+    const dispatch = useDispatch()
+
+    const stripePromise = loadStripe('pk_test_51M2YMAGtOc9LHRHIj6nTUtcMq7UktcAKjw1iPfr7bvHwSGmYZoRNnPtrUtPhz1dTUJiePlAFHowGd4m2LEgCzqFI00HDDn3ILo');
+    const handlePayment = async() =>{
+        try {
+           const stripe = await stripePromise;
+
+           const res = await makeRequest.post("/orders", {
+            products,
+           })
+
+           await stripe.redirectToCheckout({
+            sessionId: res.data.stripeSession.id,
+           })
+        } catch (error) {
+            console.log(error)
+        }
+    
+    }
+
     return(
         <div className="cart">
             <h1>Products in your cart</h1>
-            {data?.map(item => (
+            {products?.map(item => (
                 <div className="item" key ={item.id}>
-                    <img src={item.img} alt="" />
+                    <img src={import.meta.env.VITE_REACT_APP_UPLOAD_URL +item.img} alt="" />
                     <div className="details">
                         <h1>{item.title}</h1>
                         <p>{item.desc?.substring(0,100)}</p>
                         <div className="pri">
-                           1 x ${item.price}
+                           ${item.quantity} x ${item.price}
                         </div>
-                        <DeleteIcon className="delete"/>
+                        <DeleteIcon className="delete" onClick={()=>dispatch(removeItem(item.id))}/>
                     </div>
                 </div>
             ))}
             <div className="total">
                 <span>SUBTOTAL</span>
-                <span>$123</span>
+                <span>${totalPrice()}</span>
             </div>
-            <button>PROCEED TO CHECKOUT</button>
-            <span className="reset">Reset Cart</span>
+            <button onClick={handlePayment}>PROCEED TO CHECKOUT</button>
+            <span className="reset" onClick={()=>dispatch(resetCart())}>Reset Cart</span>
         </div>
     )
 }
